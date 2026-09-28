@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>UAT QR Duo 1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground: #F2F5FA;
+    --surface: #FFFFFF;
+    --surface-2: #E9EEF6;
+    --ink: #14203A;
+    --muted: #5A6882;
+    --line: #D9E1EC;
+    --accent: #0A62F0;
+    --accent-soft: #E3EDFF;
+    --pass: #1E9E75;
+    --pass-soft: #DDF5EC;
+    --fail: #D13F3F;
+    --fail-soft: #FBE3E3;
+    --block: #B7790A;
+    --block-soft: #FBEFD6;
+    --qr-bg: #FFFFFF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0C1220;
+      --surface: #151D2E;
+      --surface-2: #1D2740;
+      --ink: #E6ECF6;
+      --muted: #97A5BD;
+      --line: #28334B;
+      --accent: #5E9BFF;
+      --accent-soft: #1A2B4D;
+      --pass: #3CCB98;
+      --pass-soft: #14352B;
+      --fail: #FF7A7A;
+      --fail-soft: #3C1D22;
+      --block: #F0B44A;
+      --block-soft: #3A2C12;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0C1220;
+    --surface: #151D2E;
+    --surface-2: #1D2740;
+    --ink: #E6ECF6;
+    --muted: #97A5BD;
+    --line: #28334B;
+    --accent: #5E9BFF;
+    --accent-soft: #1A2B4D;
+    --pass: #3CCB98;
+    --pass-soft: #14352B;
+    --fail: #FF7A7A;
+    --fail-soft: #3C1D22;
+    --block: #F0B44A;
+    --block-soft: #3A2C12;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.5 "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding-inline: 16px;
+    padding-block: 0 64px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+
+  header.top { padding-block: 32px 8px; display: grid; gap: 6px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(28px, 5vw, 38px); font-weight: 800; letter-spacing: -.02em; }
+  .lede { color: var(--muted); max-width: 62ch; margin: 0; }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 14px; color: var(--muted); }
+  .meta label { display: flex; align-items: center; gap: 8px; }
+  .meta input {
+    font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; min-width: 0; width: 100%;
+  }
+  .meta label { flex: 1 1 220px; flex-direction: column; align-items: stretch; gap: 4px; font-weight: 600; }
+
+  /* Resumen fijo */
+  .summary {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    margin-top: 20px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px 16px; display: grid; gap: 12px;
+    box-shadow: 0 6px 24px -18px rgba(10, 30, 70, .5);
+  }
+  .sum-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+  .gate { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .gate.go .dot { background: var(--pass); }
+  .gate.nogo .dot { background: var(--fail); }
+  .gate.pending .dot { background: var(--block); }
+  .counts { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .chip { padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-weight: 600; }
+  .chip.pass { background: var(--pass-soft); color: var(--pass); }
+  .chip.fail { background: var(--fail-soft); color: var(--fail); }
+  .chip.block { background: var(--block-soft); color: var(--block); }
+  .bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; display: flex; }
+  .bar span { height: 100%; transition: width .25s ease; }
+  .bar .p { background: var(--pass); } .bar .f { background: var(--fail); } .bar .b { background: var(--block); }
+  .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; padding: 8px 14px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filters button { padding: 5px 12px; font-size: 13px; border-radius: 999px; }
+  .filters button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .toast { font-size: 13px; color: var(--pass); font-weight: 600; }
+
+  /* Reglas */
+  .rules { margin-top: 20px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .rule { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--muted); }
+  .rule strong { color: var(--ink); display: block; margin-bottom: 2px; }
+
+  /* Códigos de prueba */
+  section.codes { margin-top: 28px; }
+  .codes-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-top: 12px; }
+  figure.qr { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; justify-items: center; }
+  figure.qr img { width: 100%; max-width: 200px; image-rendering: pixelated; background: var(--qr-bg); border-radius: 6px; }
+  figure.qr figcaption { font-size: 13px; text-align: center; color: var(--muted); }
+  figure.qr figcaption b { color: var(--ink); display: block; }
+
+  /* Casos */
+  section.area { margin-top: 32px; }
+  .area-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .area-head h2 { font-size: 21px; font-weight: 800; }
+  .area-head .area-count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cases { display: grid; gap: 10px; margin-top: 12px; }
+  article.case {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; display: grid; gap: 10px;
+    border-left-width: 4px; border-left-color: var(--line);
+  }
+  article.case[data-result="pass"] { border-left-color: var(--pass); }
+  article.case[data-result="fail"] { border-left-color: var(--fail); }
+  article.case[data-result="block"] { border-left-color: var(--block); }
+  .case-top { display: flex; gap: 8px 12px; align-items: baseline; flex-wrap: wrap; }
+  .case-id { font-size: 13px; color: var(--muted); }
+  .prio { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .prio.crit { background: var(--fail-soft); color: var(--fail); }
+  .prio.high { background: var(--block-soft); color: var(--block); }
+  .prio.med { background: var(--surface-2); color: var(--muted); }
+  .case h3 { font-size: 17px; font-weight: 700; flex: 1 1 260px; }
+  .case ol { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 15px; }
+  .expect { font-size: 15px; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+  .expect b { font-weight: 700; }
+  .note { font-size: 13px; color: var(--muted); }
+  .result-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 7px 12px; font-size: 14px; background: var(--surface); }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"][data-v="pass"] { background: var(--pass); color: #fff; }
+  .seg button[aria-pressed="true"][data-v="fail"] { background: var(--fail); color: #fff; }
+  .seg button[aria-pressed="true"][data-v="block"] { background: var(--block); color: #fff; }
+  textarea {
+    font: inherit; font-size: 14px; color: var(--ink); background: var(--ground); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; width: 100%; min-height: 44px; resize: vertical;
+  }
+  .empty { color: var(--muted); padding: 16px; text-align: center; }
+  footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+  .pdf-msg { margin: 0; font-size: 14px; font-weight: 600; color: var(--pass); }
+  .pdf-msg[data-kind="error"] { color: var(--fail); }
+</style>
+<style>
+  html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Prueba de aceptación · TestFlight</div>
+    <h1>QR Duo 1.0 (1)</h1>
+    <p class="lede">Gracias por probar QR Duo. Recorre cada caso en tu iPhone y marca el resultado; anota lo que veas cuando algo falle o se vea raro. Tu avance se guarda en este navegador. Al terminar, toca “Generar PDF” y envíaselo a Rafael.</p>
+    <div class="meta">
+      <label>Tu nombre <input id="tester" placeholder="Nombre y apellido" autocomplete="name" aria-label="Tu nombre"></label>
+      <label>Dispositivo <input id="device" placeholder="ej. iPhone 13 · iOS 27" aria-label="Dispositivo"></label>
+      <label>Idioma del iPhone <input id="lang" placeholder="ej. Español" aria-label="Idioma del iPhone"></label>
+    </div>
+  </header>
+
+  <div class="summary" aria-live="polite">
+    <div class="sum-row">
+      <div class="gate pending" id="gate"><span class="dot"></span><span id="gateText">Pendiente</span></div>
+      <div class="counts" id="counts"></div>
+      <div class="actions">
+        <span class="toast" id="toast" hidden>Reporte copiado</span>
+        <button id="reset" type="button">Reiniciar</button>
+        <button id="copy" type="button">Copiar texto</button>
+        <button id="pdf" class="primary" type="button">Generar PDF</button>
+      </div>
+    </div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+    <div class="filters" role="group" aria-label="Filtrar casos">
+      <button type="button" data-filter="all" aria-pressed="true">Todos</button>
+      <button type="button" data-filter="todo" aria-pressed="false">Pendientes</button>
+      <button type="button" data-filter="issues" aria-pressed="false">Con problemas</button>
+    </div>
+    <p class="pdf-msg" id="pdfMsg" hidden role="status"></p>
+    <textarea id="reportFallback" hidden readonly aria-label="Reporte para copiar"></textarea>
+  </div>
+
+  <div class="rules">
+    <div class="rule"><strong>Cómo enviar tus resultados</strong>Toca “Generar PDF”. En el iPhone se abre la hoja de compartir para enviarlo por WhatsApp, correo o AirDrop; en computador se descarga.</div>
+    <div class="rule"><strong>Anuncios en TestFlight</strong>Esta versión usa los IDs reales de AdMob. Lo normal es que no aparezca banner. Si aparece uno, no lo toques.</div>
+    <div class="rule"><strong>Compras en TestFlight</strong>Son de prueba (Sandbox): no se cobra nada aunque veas tu cuenta de Apple.</div>
+  </div>
+
+  <section class="codes" id="codigos">
+    <div class="area-head"><h2>Códigos de prueba</h2><span class="area-count">Ábrelos en la pantalla de un computador y escanéalos con el iPhone</span></div>
+    <div class="codes-grid">
+      <figure class="qr"><img alt="QR de prueba: enlace a rbaena83.github.io/qrduo" src="data:image/png;base64,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"><figcaption><b>Prueba 1 · Enlace</b>rbaena83.github.io/qrduo</figcaption></figure>
+      <figure class="qr"><img alt="QR de prueba: red Wi-Fi ficticia Blue Door Cafe" src="data:image/png;base64,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"><figcaption><b>Prueba 2 · Wi‑Fi ficticio</b>Blue Door Cafe · coffee;2026</figcaption></figure>
+      <figure class="qr"><img alt="QR de prueba: contacto ficticio Emma Carter" src="data:image/png;base64,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"><figcaption><b>Prueba 3 · Contacto ficticio</b>Emma Carter · Maple Studio</figcaption></figure>
+    </div>
+  </section>
+
+  <div id="areas"></div>
+
+  <footer>Tus respuestas se guardan solo en este navegador; nadie más las ve hasta que envías el PDF. Contacto: support.qrduo@icloud.com</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+const AREAS = [
+  { id: "A", title: "Instalación y arranque", cases: [
+    { id: "UAT-01", p: "crit", t: "Instalar y abrir desde TestFlight", s: ["Instala QR Duo desde TestFlight.", "Ábrela desde la pantalla de inicio."], e: "La app abre en la pestaña Escanear sin cerrarse sola. El ícono y el nombre “QR Duo” se ven bien en la pantalla de inicio." },
+    { id: "UAT-02", p: "crit", t: "Aviso de rastreo (ATT)", s: ["En la primera apertura espera el aviso de iOS.", "Elige cualquiera de las dos opciones."], e: "Aparece una sola vez, con el texto “Se usa para mostrarte anuncios más relevantes…”. La app sigue funcionando igual con cualquiera de las respuestas." },
+    { id: "UAT-03", p: "med", t: "Idioma de la app", s: ["Revisa que los textos estén en el idioma del iPhone.", "Opcional: Ajustes › QR Duo › Idioma › English y vuelve a abrir la app."], e: "Con el iPhone en español todo sale en español. Al cambiar a inglés, toda la app pasa a inglés sin textos mezclados." },
+  ]},
+  { id: "B", title: "Escanear", cases: [
+    { id: "UAT-04", p: "crit", t: "Permiso y vista de cámara", s: ["Pestaña Escanear.", "Acepta el permiso de cámara."], e: "Se pide permiso una vez. Luego se ve la cámara a pantalla completa con el recuadro y “Apunta al código QR”." },
+    { id: "UAT-05", p: "crit", t: "Escanear un enlace", s: ["Apunta a la Prueba 1.", "Toca “Abrir en el navegador”."], e: "Vibra al detectar. La hoja muestra “Sitio web: rbaena83.github.io” y la dirección completa. Safari abre la página de QR Duo." },
+    { id: "UAT-06", p: "high", t: "Escanear un contacto", s: ["Toca “Listo” y apunta a la Prueba 3.", "Toca “Agregar a Contactos” y luego cancela sin guardar."], e: "Muestra Emma Carter con teléfono, correo y empresa. Se abre la ficha nativa de nuevo contacto ya llena, sin pedir permiso de Contactos." },
+    { id: "UAT-07", p: "high", t: "Escanear un Wi‑Fi (ficticio)", s: ["Apunta a la Prueba 2.", "Toca “Conectarse a la red”."], e: "Muestra la red Blue Door Cafe y la contraseña coffee;2026 (con el punto y coma). Aparece el aviso de iOS para unirse; como la red no existe, que no conecte es normal." },
+    { id: "UAT-08", p: "high", t: "Conectarse a tu Wi‑Fi real", s: ["Pestaña Generar › Wi‑Fi: crea el QR de tu red de casa.", "Envíalo al Mac (AirDrop) y ábrelo en pantalla.", "En el iPhone: Ajustes › Wi‑Fi › tu red › Olvidar esta red.", "Escanéalo con QR Duo y toca “Conectarse a la red”."], e: "iOS pide confirmación y el iPhone se conecta a tu red sin escribir la contraseña.", n: "Si no quieres olvidar tu red, marca Bloqueado y lo probamos luego." },
+    { id: "UAT-09", p: "med", t: "No reabre el mismo código", s: ["Escanea la Prueba 1 y toca “Listo” sin mover el iPhone."], e: "La hoja no vuelve a abrirse de inmediato con el mismo código. Si apuntas a otro código, sí lo detecta." },
+    { id: "UAT-10", p: "med", t: "Linterna", s: ["Toca el botón redondo junto a “Galería”."], e: "La linterna enciende y apaga. Se apaga sola al cerrar un resultado." },
+    { id: "UAT-11", p: "high", t: "Escanear desde la galería", s: ["Toma una captura de pantalla de un QR (o guarda uno en Fotos).", "Toca “Galería” y elige esa imagen.", "Repite con una foto sin QR."], e: "No pide permiso de Fotos. Con QR muestra el resultado. Sin QR dice “No se encontró un código QR”." },
+    { id: "UAT-12", p: "med", t: "Cámara sin permiso", s: ["Ajustes › QR Duo › desactiva Cámara.", "Abre la pestaña Escanear.", "Vuelve a activar el permiso al terminar."], e: "Muestra “Sin acceso a la cámara” con el botón “Abrir Configuración”, que lleva a los ajustes de QR Duo. “Galería” sigue funcionando." },
+  ]},
+  { id: "C", title: "Generar", cases: [
+    { id: "UAT-13", p: "crit", t: "Generar texto y guardarlo en Fotos", s: ["Generar › Texto: escribe algo.", "Toca “Generar QR”.", "“Compartir o guardar” › Guardar imagen."], e: "Aparece el QR. Al guardar, iOS pide permiso para añadir a Fotos una sola vez y la imagen queda en Fotos." },
+    { id: "UAT-14", p: "high", t: "Validación de URL", s: ["Generar › URL: escribe “apple.com” y genera.", "Vuelve y escribe “hola mundo”."], e: "Con apple.com genera https://apple.com. Con “hola mundo” el botón queda desactivado y aparece el aviso en rojo." },
+    { id: "UAT-15", p: "med", t: "Generar un contacto", s: ["Generar › Contacto: llena nombre, teléfono y correo (datos inventados).", "Genera el QR."], e: "El botón se activa al poner un nombre o una empresa. Se genera el QR y en el historial aparece con el nombre del contacto." },
+    { id: "UAT-16", p: "high", t: "Lo generado se lee con otra app", s: ["Genera cualquier QR y ábrelo en otro dispositivo o en el Mac (AirDrop).", "Escanéalo con la Cámara nativa de iOS."], e: "La Cámara de iOS reconoce el QR y ofrece la acción correcta (abrir enlace, unirse a Wi‑Fi, agregar contacto)." },
+  ]},
+  { id: "D", title: "Historial", cases: [
+    { id: "UAT-17", p: "high", t: "Registro de escaneos y QR generados", s: ["Abre la pestaña Historial."], e: "Aparece todo lo que escaneaste y generaste, con “Escaneado” o “Generado” y la fecha. Las redes y contactos se ven por su nombre, sin mostrar la contraseña. Al tocar uno se reabre." },
+    { id: "UAT-18", p: "high", t: "Borrar y persistencia", s: ["Desliza una entrada a la izquierda y bórrala.", "Cierra la app por completo y vuelve a abrirla."], e: "La entrada borrada no vuelve. El resto del historial sigue ahí tras reabrir." },
+  ]},
+  { id: "E", title: "QR Duo Pro", cases: [
+    { id: "UAT-19", p: "crit", t: "Pantalla Pro con precio", s: ["Generar › corona arriba a la derecha."], e: "Se ven los 4 beneficios, “Comprar por …” con el precio en tu moneda y “Restaurar compras”." },
+    { id: "UAT-20", p: "crit", t: "Comprar Pro", s: ["Toca “Comprar por …” y confirma en la hoja de Apple."], e: "No se cobra (Sandbox). Aparece “Ya tienes QR Duo Pro. ¡Gracias!”. Desaparece la corona de Generar y cualquier banner.", n: "Es una compra única: una vez hecha no se puede repetir con la misma cuenta. Si ya la hiciste antes, este caso cuenta como Pasa." },
+    { id: "UAT-21", p: "high", t: "Personalizar un QR", s: ["Genera un QR y abre “Personalizar”.", "Cambia colores, activa “Módulos redondeados” (desliza el interruptor) y agrega un logo desde Fotos.", "Prueba un color claro sobre fondo blanco.", "Escanea el QR personalizado con la Cámara de iOS."], e: "El QR cambia al instante. Con colores de poco contraste aparece un aviso naranja. El QR con logo se sigue leyendo." },
+    { id: "UAT-22", p: "high", t: "Exportar PNG y PDF", s: ["En “Exportar para imprimir” toca “PNG alta resolución”, guárdalo en Archivos.", "Repite con “PDF para imprimir”.", "Ábrelos desde la app Archivos."], e: "Se generan “QR Duo.png” (4096 px) y “QR Duo.pdf”, con el estilo aplicado, y se abren nítidos al ampliar." },
+    { id: "UAT-23", p: "crit", t: "Recuperar la compra", s: ["Borra QR Duo del iPhone.", "Reinstálala desde TestFlight y ábrela.", "Genera un QR y revisa la sección Personalizar.", "Solo si la corona sigue apareciendo en Generar: tócala › “Restaurar compras”."], e: "Pro vuelve solo en unos segundos, sin volver a pagar: la corona desaparece de Generar, no hay banner y Personalizar está desbloqueado. La corona solo se muestra a quien todavía no tiene Pro.", n: "Que no aparezca la corona es la señal de que la compra se recuperó." },
+  ]},
+  { id: "F", title: "Calidad general", cases: [
+    { id: "UAT-24", p: "med", t: "Modo oscuro", s: ["Activa el modo oscuro en el iPhone y recorre las tres pestañas y la pantalla Pro."], e: "Todo se lee bien. Los QR siguen con fondo blanco." },
+    { id: "UAT-25", p: "med", t: "Texto grande", s: ["Ajustes › Pantalla y brillo › Tamaño del texto: súbelo bastante.", "Recorre la app."], e: "Los textos crecen y nada queda cortado ni encimado." },
+    { id: "UAT-26", p: "med", t: "Sin conexión", s: ["Activa el modo avión.", "Escanea, genera y abre la pantalla Pro."], e: "Escanear, generar e historial funcionan. La pantalla Pro dice que no se pudo conectar con la App Store, sin cerrarse." },
+    { id: "UAT-27", p: "med", t: "Uso continuo", s: ["Usa la app 5 minutos cambiando de pestaña, escaneando y generando.", "Sal a la pantalla de inicio y vuelve."], e: "Sin cierres inesperados, sin pantallas en blanco. La cámara vuelve a funcionar al regresar." },
+  ]},
+];
+
+const BUILD = "1.0 (1)";
+const PRIO = { crit: "Crítico", high: "Alto", med: "Medio" };
+const LABEL = { pass: "Pasa", fail: "Falla", block: "Bloqueado" };
+const KEY = "qrduo-uat-1.0-1-v2";
+let state = { name: "", device: "", lang: "", results: {} };
+let filter = "all";
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.results) state = { name: s.name || "", device: s.device || "", lang: s.lang || "", results: s.results };
+  } catch {}
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+function allCases() { return AREAS.flatMap(a => a.cases.map(c => ({ ...c, area: a.title }))); }
+function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
+
+function render() {
+  const host = document.getElementById("areas");
+  host.innerHTML = AREAS.map(a => {
+    const done = a.cases.filter(c => state.results[c.id]?.r).length;
+    return `<section class="area" aria-labelledby="h-${a.id}">
+      <div class="area-head"><h2 id="h-${a.id}">${esc(a.title)}</h2><span class="area-count">${done}/${a.cases.length} revisados</span></div>
+      <div class="cases">${a.cases.map(caseHTML).join("")}</div>
+    </section>`;
+  }).join("");
+  document.getElementById("tester").value = state.name;
+  document.getElementById("device").value = state.device;
+  document.getElementById("lang").value = state.lang;
+  applyFilter();
+  summarize();
+}
+
+function caseHTML(c) {
+  const r = state.results[c.id]?.r || "";
+  const note = state.results[c.id]?.note || "";
+  return `<article class="case" id="${c.id}" data-result="${r}" data-prio="${c.p}">
+    <div class="case-top">
+      <span class="case-id mono">${c.id}</span>
+      <span class="prio ${c.p}">${PRIO[c.p]}</span>
+      <h3>${esc(c.t)}</h3>
+    </div>
+    <ol>${c.s.map(x => `<li>${esc(x)}</li>`).join("")}</ol>
+    <div class="expect"><b>Esperado:</b> ${esc(c.e)}</div>
+    ${c.n ? `<div class="note">${esc(c.n)}</div>` : ""}
+    <div class="result-row">
+      <div class="seg" role="group" aria-label="Resultado de ${c.id}">
+        ${["pass", "fail", "block"].map(v => `<button type="button" data-case="${c.id}" data-v="${v}" aria-pressed="${r === v}">${LABEL[v]}</button>`).join("")}
+      </div>
+    </div>
+    <textarea id="note-${c.id}" data-note="${c.id}" placeholder="Notas: qué pasó, qué viste, en qué pantalla…" aria-label="Notas de ${c.id}">${esc(note)}</textarea>
+  </article>`;
+}
+
+function applyFilter() {
+  document.querySelectorAll("article.case").forEach(el => {
+    const r = el.dataset.result;
+    el.hidden = filter === "todo" ? !!r : filter === "issues" ? !(r === "fail" || r === "block") : false;
+  });
+  document.querySelectorAll("#areas section.area").forEach(sec => {
+    sec.hidden = [...sec.querySelectorAll("article.case")].every(el => el.hidden);
+  });
+}
+
+function summarize() {
+  const cases = allCases();
+  const n = cases.length;
+  const count = v => cases.filter(c => state.results[c.id]?.r === v).length;
+  const p = count("pass"), f = count("fail"), b = count("block"), todo = n - p - f - b;
+  document.getElementById("counts").innerHTML =
+    `<span class="chip pass">${p} pasan</span><span class="chip fail">${f} fallan</span><span class="chip block">${b} bloqueados</span><span class="chip">${todo} pendientes</span>`;
+  document.getElementById("barP").style.width = (p / n * 100) + "%";
+  document.getElementById("barF").style.width = (f / n * 100) + "%";
+  document.getElementById("barB").style.width = (b / n * 100) + "%";
+  const crit = cases.filter(c => c.p === "crit");
+  const critBad = crit.some(c => ["fail", "block"].includes(state.results[c.id]?.r));
+  const highFail = cases.some(c => c.p === "high" && state.results[c.id]?.r === "fail");
+  const critOk = crit.every(c => state.results[c.id]?.r === "pass");
+  const gate = document.getElementById("gate");
+  const text = document.getElementById("gateText");
+  gate.className = "gate";
+  if (critBad || highFail) { gate.classList.add("nogo"); text.textContent = "Hay que corregir antes de enviar"; }
+  else if (critOk && todo === 0) { gate.classList.add("go"); text.textContent = "Todo en orden"; }
+  else if (critOk) { gate.classList.add("go"); text.textContent = "Críticos OK · faltan casos por revisar"; }
+  else { gate.classList.add("pending"); text.textContent = "Pendiente"; }
+  return { p, f, b, todo, n, gateText: text.textContent };
+}
+
+function report() {
+  const s = summarize();
+  const lines = [
+    `Reporte UAT · QR Duo ${BUILD} · TestFlight`,
+    `Tester: ${state.name || "—"} · Dispositivo: ${state.device || "—"} · Idioma: ${state.lang || "—"}`,
+    `Fecha: ${new Date().toLocaleString("es-CO")}`,
+    `Resultado: ${s.gateText} — ${s.p} pasan, ${s.f} fallan, ${s.b} bloqueados, ${s.todo} pendientes (de ${s.n})`,
+    "",
+  ];
+  const cases = allCases();
+  const issues = cases.filter(c => ["fail", "block"].includes(state.results[c.id]?.r));
+  if (issues.length) {
+    lines.push("PROBLEMAS:");
+    issues.forEach(c => lines.push(`- ${c.id} [${PRIO[c.p]}] ${c.t}: ${LABEL[state.results[c.id].r]}${state.results[c.id].note ? " — " + state.results[c.id].note.trim() : ""}`));
+    lines.push("");
+  }
+  lines.push("TODOS LOS CASOS:");
+  cases.forEach(c => {
+    const r = state.results[c.id]?.r;
+    const note = state.results[c.id]?.note?.trim();
+    lines.push(`${c.id} ${r ? LABEL[r] : "Pendiente"} · ${c.t}${note && r === "pass" ? " — " + note : ""}`);
+  });
+  return lines.join("\n");
+}
+
+// ---------- PDF ----------
+/** Las fuentes estándar del PDF no traen algunos signos tipográficos: se sustituyen por equivalentes. */
+function pdfText(s) {
+  return String(s ?? "")
+    .replace(/[‐-–]/g, "-").replace(/—/g, "-")
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/›/g, ">").replace(/…/g, "...")
+    .replace(/[^\x09\x0A\x0D\x20-\x7E -ÿ]/g, "");
+}
+function slug(s) {
+  return String(s || "tester").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") || "tester";
+}
+
+function buildPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  const M = 48, maxW = W - M * 2;
+  let y = M;
+  const colors = { pass: [30, 158, 117], fail: [209, 63, 63], block: [183, 121, 10], todo: [90, 104, 130], ink: [20, 32, 58], accent: [10, 98, 240] };
+  const ensure = h => { if (y + h > H - M) { doc.addPage(); y = M; } };
+  const write = (text, { size = 10, style = "normal", color = colors.ink, gap = 4, indent = 0 } = {}) => {
+    doc.setFont("helvetica", style); doc.setFontSize(size); doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(pdfText(text), maxW - indent);
+    lines.forEach(line => { ensure(size * 1.3); doc.text(line, M + indent, y + size); y += size * 1.3; });
+    y += gap;
+  };
+
+  const s = summarize();
+  write(`QR Duo ${BUILD} · Prueba de aceptación (UAT)`, { size: 18, style: "bold", color: colors.accent, gap: 6 });
+  write(`Tester: ${state.name || "—"}`, { size: 11, style: "bold", gap: 2 });
+  write(`Dispositivo: ${state.device || "—"}  ·  Idioma: ${state.lang || "—"}`, { size: 10, gap: 2 });
+  write(`Fecha: ${new Date().toLocaleString("es-CO")}`, { size: 10, gap: 8 });
+  write(`Resultado: ${s.gateText}`, { size: 12, style: "bold", color: s.f || s.b ? colors.fail : colors.ink, gap: 2 });
+  write(`${s.p} pasan · ${s.f} fallan · ${s.b} bloqueados · ${s.todo} pendientes (de ${s.n})`, { size: 10, gap: 12 });
+
+  const cases = allCases();
+  const issues = cases.filter(c => ["fail", "block"].includes(state.results[c.id]?.r));
+  if (issues.length) {
+    write("Problemas reportados", { size: 13, style: "bold", gap: 4 });
+    issues.forEach(c => {
+      const r = state.results[c.id];
+      write(`${c.id} [${PRIO[c.p]}] ${c.t} — ${LABEL[r.r]}`, { size: 10, style: "bold", color: colors[r.r], gap: 1 });
+      if (r.note) write(r.note, { size: 10, indent: 12, gap: 4 });
+    });
+    y += 6;
+  }
+
+  AREAS.forEach(a => {
+    ensure(40);
+    doc.setDrawColor(217, 225, 236); doc.line(M, y, W - M, y); y += 10;
+    write(a.title, { size: 13, style: "bold", gap: 4 });
+    a.cases.forEach(c => {
+      const r = state.results[c.id]?.r;
+      const note = state.results[c.id]?.note?.trim();
+      write(`${c.id}  ${r ? LABEL[r] : "Pendiente"}  ·  ${c.t}  (${PRIO[c.p]})`, { size: 10, style: "bold", color: r ? colors[r] : colors.todo, gap: note ? 1 : 4 });
+      if (note) write(`Notas: ${note}`, { size: 9.5, indent: 12, gap: 5 });
+    });
+  });
+  return doc;
+}
+
+async function sharePDF() {
+  const msg = document.getElementById("pdfMsg");
+  if (!state.name.trim()) {
+    msg.textContent = "Escribe tu nombre arriba antes de generar el PDF.";
+    msg.dataset.kind = "error"; msg.hidden = false;
+    document.getElementById("tester").focus();
+    return;
+  }
+  if (!window.jspdf) {
+    msg.textContent = "No se pudo cargar el generador de PDF. Revisa tu conexión y recarga la página.";
+    msg.dataset.kind = "error"; msg.hidden = false;
+    return;
+  }
+  const doc = buildPDF();
+  const fecha = new Date().toISOString().slice(0, 10);
+  const filename = `UAT-QRDuo-1.0-build1-${slug(state.name)}-${fecha}.pdf`;
+  const blob = doc.output("blob");
+  const file = new File([blob], filename, { type: "application/pdf" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename, text: `Resultados UAT de QR Duo ${BUILD} · ${state.name}` });
+      msg.textContent = "Listo. Envíaselo a Rafael por WhatsApp, correo o AirDrop.";
+      msg.dataset.kind = "ok"; msg.hidden = false;
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  msg.textContent = `Se descargó ${filename}. Envíaselo a Rafael.`;
+  msg.dataset.kind = "ok"; msg.hidden = false;
+}
+
+// ---------- eventos ----------
+document.addEventListener("click", ev => {
+  const seg = ev.target.closest(".seg button");
+  if (seg) {
+    const id = seg.dataset.case, v = seg.dataset.v;
+    const cur = state.results[id] || {};
+    state.results[id] = { ...cur, r: cur.r === v ? "" : v };
+    save();
+    const art = document.getElementById(id);
+    art.dataset.result = state.results[id].r;
+    art.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.results[id].r)));
+    const area = art.closest("section.area");
+    const all = area.querySelectorAll("article.case");
+    area.querySelector(".area-count").textContent = `${[...all].filter(a => a.dataset.result).length}/${all.length} revisados`;
+    summarize();
+    if (filter !== "all") applyFilter();
+    if (state.results[id].r === "fail" || state.results[id].r === "block") document.getElementById("note-" + id).focus();
+    return;
+  }
+  const f = ev.target.closest(".filters button");
+  if (f) {
+    filter = f.dataset.filter;
+    document.querySelectorAll(".filters button").forEach(b => b.setAttribute("aria-pressed", String(b === f)));
+    applyFilter();
+  }
+});
+
+document.addEventListener("input", ev => {
+  const t = ev.target;
+  if (t.dataset?.note) {
+    state.results[t.dataset.note] = { ...(state.results[t.dataset.note] || {}), note: t.value };
+    save();
+  } else if (t.id === "tester") { state.name = t.value; save(); }
+  else if (t.id === "device") { state.device = t.value; save(); }
+  else if (t.id === "lang") { state.lang = t.value; save(); }
+});
+
+let resetArmed = false;
+document.getElementById("reset").addEventListener("click", ev => {
+  if (!resetArmed) { resetArmed = true; ev.target.textContent = "¿Borrar todo? Toca otra vez"; setTimeout(() => { resetArmed = false; ev.target.textContent = "Reiniciar"; }, 4000); return; }
+  resetArmed = false; ev.target.textContent = "Reiniciar";
+  state.results = {}; save(); render();
+});
+
+document.getElementById("pdf").addEventListener("click", sharePDF);
+
+document.getElementById("copy").addEventListener("click", () => {
+  const text = report();
+  const toast = document.getElementById("toast");
+  const fallback = document.getElementById("reportFallback");
+  const showToast = msg => { toast.textContent = msg; toast.hidden = false; setTimeout(() => (toast.hidden = true), 2500); };
+  navigator.clipboard.writeText(text).then(() => { fallback.hidden = true; showToast("Reporte copiado"); }).catch(() => {
+    fallback.value = text; fallback.hidden = false; fallback.style.minHeight = "160px"; fallback.focus(); fallback.select();
+    showToast("Selecciona el texto y cópialo");
+  });
+});
+
+load();
+render();
+</script>
+</body>
+</html>
