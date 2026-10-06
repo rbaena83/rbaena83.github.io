@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UAT Interest Duo 1.0 (3)</title>
+<meta name="description" content="Protocolo de pruebas de aceptación de Interest Duo 1.0 (3).">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* Layout: una columna tipo lista de chequeo; barra de progreso fija arriba; datos del probador al inicio y botón de PDF al final. */
+:root {
+  --bg: #f3f6f4;
+  --surface: #ffffff;
+  --ink: #15211c;
+  --muted: #5b6b64;
+  --line: #dbe4df;
+  --brand: #08875c;
+  --brand-ink: #ffffff;
+  --brand-soft: #e1f3eb;
+  --pass: #0f7a4f;
+  --pass-soft: #dcf2e7;
+  --fail: #b4232c;
+  --fail-soft: #fbe3e4;
+  --skip: #6a6f7c;
+  --skip-soft: #eceef2;
+  --warn-soft: #fff4dc;
+  --warn-ink: #7a5300;
+  --font-body: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1513; --surface: #16201c; --ink: #e6efea; --muted: #9aaca4; --line: #26332e;
+    --brand: #3fcf98; --brand-ink: #0b1a14; --brand-soft: #173a2d;
+    --pass: #4fd59c; --pass-soft: #163a2a; --fail: #ff8088; --fail-soft: #43191d;
+    --skip: #a9aebb; --skip-soft: #262a33; --warn-soft: #3a2e12; --warn-ink: #f2cf7a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1513; --surface: #16201c; --ink: #e6efea; --muted: #9aaca4; --line: #26332e;
+  --brand: #3fcf98; --brand-ink: #0b1a14; --brand-soft: #173a2d;
+  --pass: #4fd59c; --pass-soft: #163a2a; --fail: #ff8088; --fail-soft: #43191d;
+  --skip: #a9aebb; --skip-soft: #262a33; --warn-soft: #3a2e12; --warn-ink: #f2cf7a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 0 48px; }
+h1, h2 { text-wrap: balance; line-height: 1.2; }
+.v { font-family: var(--font-mono); font-weight: 500; font-size: 0.92em; white-space: nowrap; background: var(--brand-soft); color: var(--ink); padding: 0 4px; border-radius: 4px; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: 12px; display: grid; gap: 10px; }
+.bar-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.bar-title { font-weight: 700; font-size: 15px; }
+.saved { font-size: 13px; color: var(--muted); }
+.meter { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; display: flex; }
+.meter span { display: block; height: 100%; transition: width .3s; }
+.m-pass { background: var(--pass); } .m-fail { background: var(--fail); } .m-skip { background: var(--skip); }
+.counts { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+header { padding-block: 24px 8px; display: grid; gap: 8px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); }
+h1 { font-size: 28px; margin: 0; }
+.lede { color: var(--muted); margin: 0; max-width: 62ch; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; margin-block: 16px; }
+.panel h2 { font-size: 16px; margin: 0; }
+.panel ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.alert { background: var(--warn-soft); color: var(--warn-ink); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+input[type="text"] { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+
+section.block { display: grid; gap: 12px; margin-top: 28px; }
+.block-head { display: grid; gap: 2px; }
+.block-head h2 { font-size: 20px; margin: 0; }
+.block-head p { margin: 0; color: var(--muted); font-size: 14px; }
+.test { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; border-left: 4px solid var(--line); min-width: 0; }
+.test[data-status="pass"] { border-left-color: var(--pass); }
+.test[data-status="fail"] { border-left-color: var(--fail); }
+.test[data-status="skip"] { border-left-color: var(--skip); }
+.t-head { display: flex; gap: 10px; align-items: baseline; }
+.t-id { font-family: var(--font-mono); font-size: 13px; color: var(--muted); flex: none; }
+.t-title { font-weight: 600; margin: 0; font-size: 16px; }
+.new { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--brand); border: 1px solid var(--brand); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
+.t-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.expect { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--bg); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.st { flex: 1 1 90px; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.st[data-v="pass"][aria-pressed="true"] { background: var(--pass-soft); border-color: var(--pass); color: var(--pass); }
+.st[data-v="fail"][aria-pressed="true"] { background: var(--fail-soft); border-color: var(--fail); color: var(--fail); }
+.st[data-v="skip"][aria-pressed="true"] { background: var(--skip-soft); border-color: var(--skip); color: var(--skip); }
+textarea { width: 100%; font: inherit; font-size: 15px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 44px; resize: vertical; }
+.note-label { font-size: 13px; color: var(--muted); }
+.empty { color: var(--muted); text-align: center; padding: 24px; }
+
+.finish { margin-top: 32px; }
+.btn { font: inherit; font-weight: 700; font-size: 16px; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--brand); cursor: pointer; }
+.btn-primary { background: var(--brand); color: var(--brand-ink); }
+.btn-quiet { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 600; font-size: 14px; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.msg { font-size: 14px; margin: 0; }
+.msg.error { color: var(--fail); }
+.msg.ok { color: var(--pass); }
+footer { margin-top: 24px; color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .meter span { transition: none; } }
+@media print {
+  .bar, .actions, .finish, .alert, textarea:placeholder-shown { display: none !important; }
+  .test { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar" role="region" aria-label="Progreso">
+    <div class="bar-top">
+      <span class="bar-title">Interest Duo · build 1.0 (3)</span>
+      <span class="saved" id="saved" aria-live="polite">Tus marcas se guardan en este navegador</span>
+    </div>
+    <div class="meter" aria-hidden="true"><span class="m-pass" id="mp"></span><span class="m-fail" id="mf"></span><span class="m-skip" id="ms"></span></div>
+    <div class="counts" id="filters">
+      <button class="chip" data-f="all" aria-pressed="true" id="f-all">Todas</button>
+      <button class="chip" data-f="pending" aria-pressed="false" id="f-pending">Pendientes</button>
+      <button class="chip" data-f="pass" aria-pressed="false" id="f-pass">Pasan</button>
+      <button class="chip" data-f="fail" aria-pressed="false" id="f-fail">Fallan</button>
+      <button class="chip" data-f="skip" aria-pressed="false" id="f-skip">Omitidas</button>
+    </div>
+  </div>
+
+  <header>
+    <span class="eyebrow">Pruebas de aceptación (UAT)</span>
+    <h1>Protocolo de pruebas de Interest Duo</h1>
+    <p class="lede">Gracias por ayudar a probar la app. Recorre las pruebas en orden: en cada una sigue los pasos, compara con el resultado esperado y marca si pasa o falla. Al final genera el PDF con tus resultados y envíaselo a Rafael.</p>
+  </header>
+
+  <div class="panel">
+    <h2>Tus datos</h2>
+    <div class="fields">
+      <div class="field"><label for="tester-name">Nombre</label><input type="text" id="tester-name" autocomplete="name" placeholder="Ej.: Ana Pérez"></div>
+      <div class="field"><label for="tester-device">Modelo de iPhone</label><input type="text" id="tester-device" placeholder="Ej.: iPhone 15 Pro"></div>
+      <div class="field"><label for="tester-ios">Versión de iOS</label><input type="text" id="tester-ios" placeholder="Ej.: iOS 26.1"></div>
+      <div class="field"><label for="tester-lang">Idioma del iPhone</label><input type="text" id="tester-lang" placeholder="Ej.: Español"></div>
+    </div>
+    <p class="msg" style="color: var(--muted)">La versión de iOS está en Ajustes → General → Información.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Antes de empezar</h2>
+    <ol>
+      <li><b>Instala la app desde TestFlight</b> con la invitación que te llegó por correo.</li>
+      <li><b>Haz las pruebas en orden.</b> Los bloques 1 a 6 son de la versión gratis. La compra de Pro está en el bloque 7, y después de comprar ya no se puede volver a la versión gratis en ese teléfono.</li>
+      <li><b>Los montos se escriben en pesos (COP)</b> salvo que la prueba diga otra cosa. Los decimales se pueden escribir con coma o con punto.</li>
+      <li><b>Si una prueba no aplica,</b> márcala como "Omitir". Si algo falla, escribe en la nota qué viste.</li>
+    </ol>
+    <div class="alert"><b>No toques los anuncios.</b> La app muestra anuncios reales. Tocarlos durante las pruebas cuenta como clic inválido y puede suspender la cuenta de anuncios de la app.</div>
+  </div>
+
+  <main id="list"></main>
+
+  <div class="panel finish">
+    <h2>Terminar y enviar</h2>
+    <p class="msg">Genera el PDF con tus resultados y envíaselo a Rafael por WhatsApp o correo. Puedes generarlo aunque te falten pruebas.</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="make-pdf">Generar PDF de resultados</button>
+      <button class="btn btn-quiet" id="reset">Borrar mis marcas</button>
+    </div>
+    <p class="msg" id="pdf-msg" aria-live="polite"></p>
+  </div>
+
+  <footer>
+    <p>Los valores esperados se calcularon con la misma lógica de la app. Una diferencia de $ 1 por redondeo no es una falla.</p>
+  </footer>
+</div>
+
+<script>
+const BLOCKS = [
+  { id: "inst", title: "1. Instalación y arranque", sub: "Que la versión correcta llegue al teléfono y abra.", tests: [
+    { id: "I1", title: "Instalar la build 3", steps: ["Abre la app TestFlight.", "Toca Interest Duo y revisa el número de versión.", "Toca Instalar (o Actualizar) y luego Abrir."], expect: "TestFlight muestra <span class='v'>1.0 (3)</span>. La app abre sin cerrarse sola." },
+    { id: "I2", title: "Permiso de rastreo (ATT)", steps: ["La primera vez que abres la app aparece \"¿Permitir que Interest Duo rastree tu actividad…?\".", "Responde lo que quieras."], expect: "La app sigue funcionando normal con cualquiera de las dos respuestas. Si no aparece porque ya lo respondiste antes, marca Omitir." },
+    { id: "I3", title: "Banner de anuncios", steps: ["Mira la parte de abajo de la pantalla, sobre las pestañas Ahorro y Crédito.", "No lo toques."], expect: "Aparece un anuncio <b>sin</b> la etiqueta \"Test mode\". Si el espacio sale vacío también está bien: a veces no hay anuncios disponibles." }
+  ]},
+  { id: "rates", title: "2. Tipos de tasa", sub: "Lo nuevo de esta versión: solo E.A. y nominal mensual, con conversión automática.", tests: [
+    { id: "T1", isNew: true, title: "Solo dos tipos de tasa en pesos", steps: ["Ve a la pestaña Crédito, con la moneda en COP (botón arriba a la izquierda)."], expect: "El selector de tasa tiene solo <b>E.A.</b> y <b>Nominal mensual</b>. No aparece N.M.V." },
+    { id: "T2", isNew: true, title: "De E.A. a nominal mensual", steps: ["Con los valores iniciales (tasa 12 % E.A.), toca Nominal mensual."], expect: "La tasa cambia sola a <span class='v'>0,9489 %</span>. Debajo dice \"Equivale a 12 % E.A.\". La cuota sigue en <span class='v'>$ 2.193.570</span>." },
+    { id: "T3", isNew: true, title: "Y de vuelta a E.A.", steps: ["Toca E.A."], expect: "La tasa vuelve a <span class='v'>12 %</span> y la cuota sigue en <span class='v'>$ 2.193.570</span>." },
+    { id: "T4", isNew: true, title: "Ejemplo de Excel", steps: ["Selecciona Nominal mensual.", "Escribe 1,12 en la tasa."], expect: "Debajo dice \"Equivale a 14,3 % E.A.\" (en Excel, =INT.EFECTIVO(1,12%*12;12) da 14,2996 %). Al tocar E.A., el campo muestra ≈ <span class='v'>14,3</span>." },
+    { id: "T5", title: "Coma o punto en la tasa", steps: ["Selecciona E.A. y escribe 12,5.", "Fíjate en la equivalencia.", "Ahora escribe 12.5 (con punto)."], expect: "Con los dos separadores la equivalencia es la misma: <span class='v'>0,9864 %</span> nominal mensual." },
+    { id: "T6", isNew: true, title: "Conversión en Ahorro", steps: ["Ve a la pestaña Ahorro (escenario A, 10 % E.A.).", "Toca Nominal mensual y luego E.A."], expect: "Pasa a <span class='v'>0,7974 %</span> y vuelve a <span class='v'>10 %</span>. El saldo final no cambia: <span class='v'>$ 112.900.641</span>." },
+    { id: "T7", title: "Tasas en dólares", steps: ["Toca el botón de moneda y elige USD.", "Ve a Crédito.", "Al terminar, vuelve a COP."], expect: "El selector muestra <b>APY</b> y <b>APR</b>. El crédito de ejemplo (200,000 a 6 % APR, 360 meses) da <span class='v'>$1,199.10</span>." }
+  ]},
+  { id: "loan", title: "3. Crédito", sub: "Cuota, primer periodo largo y abonos.", tests: [
+    { id: "C1", title: "Valores iniciales", steps: ["Pestaña Crédito en COP, sin cambiar nada: 100.000.000, 12 % E.A., 60 meses, 30 días, seguros $ 0."], expect: "Cuota <span class='v'>$ 2.193.570</span>. Intereses totales <span class='v'>$ 31.614.163</span>. Total pagado <span class='v'>$ 131.614.163</span>." },
+    { id: "C2", title: "Primera cuota a los 60 días", steps: ["Monto 80.000.000, tasa 11 E.A., plazo 60 meses.", "Días hasta la primera cuota: 30, y luego 60.", "Con 60 días, abre la tabla de amortización."], expect: "Con 30 días: <span class='v'>$ 1.718.779</span>. Con 60 días: <span class='v'>$ 1.733.792</span>. En la tabla, los intereses de la fila 1 son <span class='v'>1.403.638</span>, unos dos meses de intereses." },
+    { id: "C3", isNew: true, title: "Crédito largo con 60 días", steps: ["Monto 100.000.000, 12 % E.A., plazo 120 meses, 60 días.", "Abre la tabla de amortización."], expect: "Cuota <span class='v'>$ 1.412.751</span>. Fila 1: cuota <span class='v'>1.412.751</span>, intereses <span class='v'>1.906.762</span>, capital <span class='v'>−494.011</span>, saldo <span class='v'>100.494.011</span>. La tabla termina en la fila 120 y abajo dice \"Los intereses del primer periodo superan la cuota: la diferencia se suma al saldo.\"" },
+    { id: "C4", title: "Seguros y otros cobros", steps: ["Vuelve a los valores de C1 (100.000.000, 12 % E.A., 60 meses, 30 días).", "Escribe 50.000 en Seguros y otros cobros mensuales."], expect: "La cuota pasa a <span class='v'>$ 2.243.570</span> y debajo dice \"Incluye $ 50.000 de seguros y otros cobros\". Al terminar, vuelve a dejar seguros en $ 0." },
+    { id: "C5", title: "Abono a capital", steps: ["Con los valores de C1 y seguros en $ 0, pon un abono de 10.000.000 en el mes 12."], expect: "Reducir plazo: ahorras <span class='v'>$ 5.294.631</span>, −6 meses. Reducir cuota: ahorras <span class='v'>$ 2.496.139</span>, nueva cuota <span class='v'>$ 1.933.233</span> (−$ 260.337 por mes). \"Por cada $ 1.000.000 abonado ahorras $ 529.463… o $ 249.614\"." },
+    { id: "C6", title: "Gráfica de cuándo abonar", steps: ["Baja hasta la gráfica del ahorro según el mes del abono.", "Toca y desliza el dedo sobre la gráfica."], expect: "Muestra el ahorro de cada mes. Abonar antes ahorra más: la curva baja hacia la derecha." },
+    { id: "C7", title: "Tabla de amortización", steps: ["Con el abono de C5, abre la tabla.", "Cambia entre Sin abono, Reducir plazo y Reducir cuota."], expect: "Sin abono tiene 60 filas. Reducir plazo termina en la fila <span class='v'>54</span>. La fila 12 marca el abono de $ 10.000.000." },
+    { id: "C8", title: "Datos inválidos", steps: ["Borra el monto (déjalo vacío).", "Pon plazo 0.", "Pon 400 en días hasta la primera cuota."], expect: "La app no se cierra. Los resultados se ocultan mientras los datos no son válidos y vuelven al corregirlos." }
+  ]},
+  { id: "sav", title: "4. Ahorro", sub: "Interés compuesto, aportes y comparación de escenarios.", tests: [
+    { id: "A1", title: "Valores iniciales", steps: ["Pestaña Ahorro en COP, sin cambiar nada: 5.000.000 inicial, 500.000 mensual, 10 % E.A., 10 años."], expect: "Saldo final <span class='v'>$ 112.900.641</span>. Total aportado <span class='v'>$ 65.000.000</span>. Intereses <span class='v'>$ 47.900.641</span>. Se duplica en ≈ 7,2 años (exacto 7,3)." },
+    { id: "A2", title: "Aporte anual", steps: ["Cambia la frecuencia del aporte a Anual.", "Al terminar, vuelve a Mensual."], expect: "Saldo final <span class='v'>$ 20.937.425</span>." },
+    { id: "A3", title: "Segundo escenario (gratis)", steps: ["Toca + (arriba a la derecha).", "Revisa el escenario B (12 % E.A.)."], expect: "Aparece el escenario B con su color. Su saldo final es <span class='v'>$ 126.494.262</span>. La gráfica y la tabla comparan A y B." },
+    { id: "A4", title: "Límite de la versión gratis", steps: ["Toca + otra vez."], expect: "Se abre la pantalla de Interest Duo Pro, porque el tercer escenario es de Pro. Ciérrala sin comprar." },
+    { id: "A5", title: "Plazo", steps: ["Usa − y + en Plazo."], expect: "Va de 1 a 50 años y el saldo se recalcula al instante." }
+  ]},
+  { id: "free", title: "5. Funciones de Pro bloqueadas", sub: "En la versión gratis estas funciones abren la pantalla de compra.", tests: [
+    { id: "P1", title: "Exportar PDF", steps: ["En Crédito, toca el botón de exportar PDF."], expect: "Muestra la corona y abre la pantalla de Pro." },
+    { id: "P2", title: "Guardar simulación", steps: ["Toca la carpeta (arriba a la derecha)."], expect: "Ofrece Pro en vez de guardar." },
+    { id: "P3", title: "Abono adicional", steps: ["En la sección de abonos, toca agregar otro abono."], expect: "Muestra la corona y abre la pantalla de Pro." },
+    { id: "P4", title: "Pantalla de Pro", steps: ["Toca la corona junto a la moneda.", "Revisa la pantalla.", "Ciérrala sin comprar."], expect: "Lista: sin anuncios, varios abonos, guardar simulaciones, PDF y 3 escenarios. El botón dice \"Comprar por\" y un precio. <b>Falla</b> si dice \"Precio no disponible\" o se queda en \"Cargando precio…\"." }
+  ]},
+  { id: "general", title: "6. General", sub: "Cosas que valen para toda la app.", tests: [
+    { id: "G1", title: "La moneda se recuerda", steps: ["Cambia a USD.", "Cierra la app del todo (desliza hacia arriba).", "Ábrela otra vez y luego vuelve a COP."], expect: "Al reabrir sigue en USD." },
+    { id: "G2", title: "Modo oscuro", steps: ["En el Centro de control activa el modo oscuro.", "Recorre Ahorro, Crédito y la tabla."], expect: "Todo se lee bien. Ningún texto queda oscuro sobre fondo oscuro." },
+    { id: "G3", title: "Texto grande", steps: ["Ajustes → Pantalla y brillo → Tamaño del texto: súbelo dos pasos.", "Recorre la app. Al terminar, déjalo como estaba."], expect: "Los textos crecen y no quedan cortados de forma que no se entiendan." },
+    { id: "G4", title: "Sin internet", steps: ["Activa el modo avión.", "Cambia valores en Ahorro y Crédito.", "Desactiva el modo avión."], expect: "Los cálculos funcionan igual. El anuncio puede desaparecer." },
+    { id: "G5", title: "App en inglés (opcional)", steps: ["Ajustes → Apps → Interest Duo → Idioma → English.", "Abre la app y luego vuelve a Español."], expect: "Los textos salen en inglés y la moneda sigue en COP, con formato de pesos <span class='v'>$ 112.900.641</span>." }
+  ]},
+  { id: "buy", title: "7. Compra de Pro", sub: "En TestFlight la compra es gratis: Apple no cobra nada. Después de comprar ya no vuelves a la versión gratis.", tests: [
+    { id: "B1", title: "Comprar Pro", steps: ["Toca la corona y luego \"Comprar por…\".", "Confirma en la ventana de Apple. Debe decir que es de TestFlight o del entorno de pruebas (sandbox)."], expect: "La pantalla de Pro se cierra. El banner de anuncios desaparece y la corona ya no se ve." },
+    { id: "B2", title: "Restaurar compra", steps: ["Borra la app del teléfono.", "Instálala otra vez desde TestFlight.", "Si sigue apareciendo la corona, tócala y luego Restaurar compras."], expect: "Pro vuelve, sola o al tocar Restaurar compras, sin pagar de nuevo." }
+  ]},
+  { id: "pro", title: "8. Funciones de Pro", sub: "Con Pro activo.", tests: [
+    { id: "R1", title: "Sin anuncios", steps: ["Recorre Ahorro y Crédito."], expect: "No aparece el banner en ninguna pestaña." },
+    { id: "R2", title: "Tres escenarios de ahorro", steps: ["En Ahorro, toca + hasta tener A, B y C."], expect: "Aparece el escenario C con su propio color. La comparación muestra los tres." },
+    { id: "R3", title: "Varios abonos", steps: ["Con los valores de C5 (abono de 10.000.000 en el mes 12), agrega un segundo abono."], expect: "El nuevo abono aparece en el mes 24 por 10.000.000. Se muestra cuánto ahorra cada abono, y el total ahorrado es mayor que en C5." },
+    { id: "R4", title: "Guardar y abrir una simulación", steps: ["Arma un crédito con 60 días y tasa en Nominal mensual.", "Guárdalo como \"Prueba UAT\".", "Cambia el monto.", "Abre \"Prueba UAT\" desde la carpeta."], expect: "Vuelven todos los valores guardados, incluidos los 60 días y el tipo de tasa." },
+    { id: "R5", title: "Simulación guardada en una versión anterior (opcional)", steps: ["Si en la build 2 guardaste una simulación con N.M.V., ábrela."], expect: "Abre convertida a Nominal mensual, con el valor equivalente (12 % N.M.V. → 1 % mensual) y la misma cuota. Si no tienes ninguna, marca Omitir." },
+    { id: "R6", title: "PDF del crédito", steps: ["Con los valores de C1, toca exportar PDF.", "Revisa el documento y prueba el botón de compartir."], expect: "Se ve el PDF con los datos, la tasa como \"12 % E.A. (0,9489 % nominal mensual)\" y la tabla completa. Se puede compartir o guardar." },
+    { id: "R7", isNew: true, title: "PDF de un crédito largo con 60 días", steps: ["Con los valores de C3, exporta el PDF."], expect: "Dice \"Días hasta la primera cuota: 60\". La fila 1 tiene capital negativo y al final está la nota de los intereses del primer periodo." },
+    { id: "R8", title: "PDF del ahorro", steps: ["En Ahorro, con dos o tres escenarios, exporta el PDF."], expect: "Trae cada escenario con sus datos y su tabla por año." }
+  ]}
+];
+
+const ALL = BLOCKS.flatMap(b => b.tests);
+const LS_KEY = "uat-interest-duo-b3-v2";
+const STATUS_TEXT = { pass: "Pasa", fail: "Falla", skip: "Omitida", pending: "Pendiente" };
+let state = { results: {}, tester: { name: "", device: "", ios: "", lang: "" } };
+let filter = "all";
+
+try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) {}
+function persist() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); setSaved("Guardado en este navegador"); }
+  catch (e) { setSaved("Este navegador no guarda las marcas: genera el PDF antes de cerrar la página"); }
+}
+function setSaved(t) { document.getElementById("saved").textContent = t; }
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function plain(html) { const d = document.createElement("div"); d.innerHTML = html; return d.textContent; }
+
+// Datos del probador
+for (const [key, id] of [["name", "tester-name"], ["device", "tester-device"], ["ios", "tester-ios"], ["lang", "tester-lang"]]) {
+  const el = document.getElementById(id);
+  el.value = state.tester[key] || "";
+  el.addEventListener("input", () => { state.tester[key] = el.value; persist(); });
+}
+
+function render() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  let shown = 0;
+  for (const b of BLOCKS) {
+    const tests = b.tests.filter(t => filter === "all" || (state.results[t.id]?.status || "pending") === filter);
+    if (!tests.length) continue;
+    const sec = document.createElement("section");
+    sec.className = "block";
+    sec.innerHTML = `<div class="block-head"><h2>${esc(b.title)}</h2><p>${esc(b.sub)}</p></div>`;
+    for (const t of tests) {
+      shown++;
+      const r = state.results[t.id] || {};
+      const card = document.createElement("article");
+      card.className = "test";
+      card.dataset.status = r.status || "pending";
+      card.innerHTML = `
+        <div class="t-head"><span class="t-id">${t.id}</span><h3 class="t-title">${esc(t.title)}${t.isNew ? '<span class="new">Nuevo</span>' : ''}</h3></div>
+        <p class="t-label">Pasos</p>
+        <ol class="steps">${t.steps.map(x => `<li>${esc(x)}</li>`).join("")}</ol>
+        <p class="t-label">Resultado esperado</p>
+        <p class="expect">${t.expect}</p>
+        <div class="actions" role="group" aria-label="Resultado de ${t.id}">
+          ${["pass", "fail", "skip"].map(v => `<button class="st" id="st-${t.id}-${v}" data-v="${v}" aria-pressed="${r.status === v}">${{ pass: "✓ Pasa", fail: "✗ Falla", skip: "Omitir" }[v]}</button>`).join("")}
+        </div>
+        <label class="note-label" for="note-${t.id}">Nota (qué viste, sobre todo si falla)</label>
+        <textarea id="note-${t.id}" rows="1" placeholder="Ej.: la cuota salió en $ 2.193.571"></textarea>`;
+      const ta = card.querySelector("textarea");
+      ta.value = r.note || "";
+      card.querySelectorAll(".st").forEach(btn => btn.addEventListener("click", () => {
+        const cur = state.results[t.id] || {};
+        cur.status = cur.status === btn.dataset.v ? undefined : btn.dataset.v;
+        if (!cur.status) delete cur.status;
+        state.results[t.id] = cur;
+        persist();
+        render();
+      }));
+      ta.addEventListener("input", () => {
+        state.results[t.id] = Object.assign(state.results[t.id] || {}, { note: ta.value });
+        persist();
+      });
+      sec.appendChild(card);
+    }
+    list.appendChild(sec);
+  }
+  if (!shown) list.innerHTML = `<p class="empty">No hay pruebas en este filtro.</p>`;
+  counts();
+}
+
+function tally() {
+  const c = { pass: 0, fail: 0, skip: 0, pending: 0 };
+  for (const t of ALL) c[state.results[t.id]?.status || "pending"]++;
+  return c;
+}
+function counts() {
+  const c = tally(), n = ALL.length;
+  document.getElementById("mp").style.width = (c.pass / n * 100) + "%";
+  document.getElementById("mf").style.width = (c.fail / n * 100) + "%";
+  document.getElementById("ms").style.width = (c.skip / n * 100) + "%";
+  document.getElementById("f-all").textContent = `Todas ${n}`;
+  document.getElementById("f-pending").textContent = `Pendientes ${c.pending}`;
+  document.getElementById("f-pass").textContent = `Pasan ${c.pass}`;
+  document.getElementById("f-fail").textContent = `Fallan ${c.fail}`;
+  document.getElementById("f-skip").textContent = `Omitidas ${c.skip}`;
+}
+
+document.getElementById("filters").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+  render();
+});
+
+// Borrar marcas: confirmación dentro de la página (en algunos visores confirm() no funciona).
+const resetBtn = document.getElementById("reset");
+let resetArmed = false;
+resetBtn.addEventListener("click", () => {
+  if (!resetArmed) {
+    resetArmed = true;
+    resetBtn.textContent = "Toca otra vez para borrar todo";
+    setTimeout(() => { resetArmed = false; resetBtn.textContent = "Borrar mis marcas"; }, 4000);
+    return;
+  }
+  resetArmed = false;
+  resetBtn.textContent = "Borrar mis marcas";
+  state.results = {};
+  persist();
+  render();
+  showMsg("Marcas borradas. Tus datos de probador se conservan.", "ok");
+});
+
+// ---------- PDF ----------
+// Las fuentes estándar del PDF solo traen caracteres latinos: se reemplazan los demás.
+function pdfText(s) {
+  return String(s || "")
+    .replace(/[−–—]/g, "-").replace(/≈/g, "~").replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/…/g, "...").replace(/→/g, "->").replace(/✓/g, "").replace(/✗/g, "")
+    .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, "");
+}
+function slug(s) {
+  return (s || "probador").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") || "probador";
+}
+function showMsg(t, kind) { const m = document.getElementById("pdf-msg"); m.textContent = t; m.className = "msg " + (kind || ""); }
+
+function buildPdf() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const now = new Date();
+  const date = now.toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" });
+  const time = now.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+  const c = tally();
+  const left = 40;
+  const green = [8, 135, 92];
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(21, 33, 28);
+  doc.text(pdfText("Resultados de pruebas UAT · Interest Duo 1.0 (3)"), left, 50);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(91, 107, 100);
+  doc.text(pdfText(`Generado el ${date}, ${time}`), left, 68);
+
+  doc.autoTable({
+    startY: 84, theme: "plain", margin: { left },
+    styles: { fontSize: 10, cellPadding: 3, textColor: [21, 33, 28] },
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 110 } },
+    body: [
+      ["Probador", pdfText(state.tester.name || "(sin nombre)")],
+      ["iPhone", pdfText(state.tester.device || "(sin dato)")],
+      ["iOS", pdfText(state.tester.ios || "(sin dato)")],
+      ["Idioma", pdfText(state.tester.lang || "(sin dato)")],
+      ["Resumen", `${c.pass} pasan · ${c.fail} fallan · ${c.skip} omitidas · ${c.pending} pendientes (de ${ALL.length})`]
+    ]
+  });
+
+  const failed = ALL.filter(t => state.results[t.id]?.status === "fail");
+  if (failed.length) {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(180, 35, 44);
+    doc.text("Fallas", left, doc.lastAutoTable.finalY + 26);
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 34, margin: { left },
+      headStyles: { fillColor: [180, 35, 44], textColor: 255 },
+      styles: { fontSize: 9, cellPadding: 5, valign: "top" },
+      columnStyles: { 0: { cellWidth: 34 }, 1: { cellWidth: 120 } },
+      head: [["ID", "Prueba", "Esperado", "Lo que vio el probador"]],
+      body: failed.map(t => [t.id, pdfText(t.title), pdfText(plain(t.expect)), pdfText(state.results[t.id]?.note || "(sin nota)")])
+    });
+  }
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(21, 33, 28);
+  doc.text("Todas las pruebas", left, doc.lastAutoTable.finalY + 26);
+  const colors = { pass: [15, 122, 79], fail: [180, 35, 44], skip: [106, 111, 124], pending: [150, 150, 150] };
+  const rows = [];
+  for (const b of BLOCKS) {
+    rows.push([{ content: pdfText(b.title), colSpan: 4, styles: { fontStyle: "bold", fillColor: [225, 243, 235] } }]);
+    for (const t of b.tests) {
+      const r = state.results[t.id] || {};
+      const s = r.status || "pending";
+      rows.push([t.id, pdfText(t.title), { content: STATUS_TEXT[s], styles: { textColor: colors[s], fontStyle: "bold" } }, pdfText(r.note || "")]);
+    }
+  }
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 34, margin: { left },
+    headStyles: { fillColor: green, textColor: 255 },
+    styles: { fontSize: 9, cellPadding: 5, valign: "top" },
+    columnStyles: { 0: { cellWidth: 34 }, 1: { cellWidth: 170 }, 2: { cellWidth: 64 } },
+    head: [["ID", "Prueba", "Resultado", "Nota"]],
+    body: rows
+  });
+
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(140, 140, 140);
+    doc.text(pdfText(`Interest Duo · UAT build 1.0 (3) · ${state.tester.name || ""} · página ${p} de ${pages}`), left, doc.internal.pageSize.getHeight() - 20);
+  }
+  const fname = `UAT-InterestDuo-1.0-3-${slug(state.tester.name)}-${now.toISOString().slice(0, 10)}.pdf`;
+  return { doc, fname };
+}
+
+document.getElementById("make-pdf").addEventListener("click", async () => {
+  if (!state.tester.name.trim()) {
+    showMsg("Escribe tu nombre en \"Tus datos\" (arriba) antes de generar el PDF.", "error");
+    document.getElementById("tester-name").focus();
+    return;
+  }
+  if (!window.jspdf || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API.autoTable) {
+    showMsg("No se pudo cargar el generador de PDF (revisa tu conexión a internet). Mientras tanto se abre la opción de imprimir: elige \"Guardar como PDF\".", "error");
+    window.print();
+    return;
+  }
+  const { doc, fname } = buildPdf();
+  // Dentro de claude.ai el archivo se entrega con el permiso de descargas; en un navegador normal, se descarga directo.
+  let downloads = null;
+  try { downloads = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) { downloads = null; }
+  if (downloads) {
+    try {
+      await downloads.save({ filename: fname, data: doc.output("blob") });
+      showMsg(`Listo: ${fname}. Envíaselo a Rafael.`, "ok");
+    } catch (e) {
+      showMsg(e && e.code === "declined" ? "Cancelaste la descarga. Puedes generar el PDF otra vez." : "No se pudo descargar el PDF en este visor.", "error");
+    }
+    return;
+  }
+  if (window.claude?.use) {
+    showMsg("Este visor no permite descargar archivos. Abre el enlace de la página en Safari y genera el PDF desde ahí.", "error");
+    return;
+  }
+  // En iPhone se abre la hoja de compartir (WhatsApp, correo, AirDrop); en computador se descarga.
+  const blob = doc.output("blob");
+  const file = new File([blob], fname, { type: "application/pdf" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: fname, text: `Resultados UAT de Interest Duo 1.0 (3) · ${state.tester.name}` });
+      showMsg("Listo. Envíaselo a Rafael por WhatsApp, correo o AirDrop.", "ok");
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return;
+  }
+  doc.save(fname);
+  showMsg(`Se descargó ${fname}. Envíaselo a Rafael.`, "ok");
+});
+
+render();
+persist();
+</script>
+</body>
+</html>
